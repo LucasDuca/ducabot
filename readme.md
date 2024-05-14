@@ -11,7 +11,7 @@ Atenção, para o AutoAttack funcionar, é preciso configurar hotkey de ataque c
 
 <img src="https://github.com/LucasDuca/ducabot/blob/main/2024-05-13_23h37_26.png?raw=true" alt="Spells">
 
-Abrir o executável Duca_Bot3.0.
+Modo de uso, se logar no tibia e abrir o executável Duca_Bot3.0.
 Ele reconhecerá o primeiro cliente de tibia aberto.
 Versão inicial. Bot 100% FREE.
 Contact: lucasducaster@gmail.com
