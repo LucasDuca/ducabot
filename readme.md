@@ -1,6 +1,16 @@
 SUPPORT TIBIA CLIENT 13.32.14
 
-Bot free.
+Bot free. Versão 1.0.1.
+
+Features
+
+Anti Paralyze
+Dash Speed
+Percent HP 
+Percent MP
+
+Ajustes no cave bot..
+
 
 Atenção, para o AutoAttack funcionar, é preciso configurar hotkey de ataque como o número 0.
 
