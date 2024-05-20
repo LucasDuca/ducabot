@@ -1,5 +1,9 @@
 SUPPORT TIBIA CLIENT 13.32.14
 
+Whatsapp
+https://chat.whatsapp.com/C4OSuvnUIa55ZSIRgJ9Pib
+
+
 Bot free. Versão 1.0.1.
 
 Features
