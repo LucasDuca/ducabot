@@ -4,12 +4,11 @@ Whatsapp
 https://chat.whatsapp.com/C4OSuvnUIa55ZSIRgJ9Pib
 
 
-Bot free. Versão 1.0.2.
+Bot free. Versão 1.0.3.
 
 Features
 
-Cave bot work minimized
-Allow Multiple Clients
+Allow record waitpoints
 
 
 
