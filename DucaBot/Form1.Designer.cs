@@ -47,6 +47,7 @@ namespace DucaBot
             valuesPanel = new Panel();
             goToValue = new Label();
             goToLabel = new Label();
+            goToCheck = new CheckBox();
             creatureRawValue = new Label();
             creatureRawLabel = new Label();
             autoLootCheck = new CheckBox();
@@ -353,6 +354,7 @@ namespace DucaBot
             valuesPanel.Controls.Add(monsterLabel);
             valuesPanel.Controls.Add(goToValue);
             valuesPanel.Controls.Add(goToLabel);
+            valuesPanel.Controls.Add(goToCheck);
             valuesPanel.Controls.Add(creatureRawValue);
             valuesPanel.Controls.Add(creatureRawLabel);
             valuesPanel.Controls.Add(posZValue);
@@ -389,6 +391,16 @@ namespace DucaBot
             goToLabel.Size = new Size(110, 21);
             goToLabel.TabIndex = 12;
             goToLabel.Text = "GoTo Oppon:";
+            // 
+            // goToCheck
+            // 
+            goToCheck.AutoSize = true;
+            goToCheck.Location = new Point(380, 129);
+            goToCheck.Name = "goToCheck";
+            goToCheck.Size = new Size(15, 14);
+            goToCheck.TabIndex = 14;
+            goToCheck.UseVisualStyleBackColor = true;
+            goToCheck.CheckedChanged += goToCheck_CheckedChanged;
             // 
             // creatureRawValue
             // 
@@ -629,6 +641,7 @@ namespace DucaBot
         private System.Windows.Forms.Label monsterLabel;
         private System.Windows.Forms.Label goToValue;
         private System.Windows.Forms.Label goToLabel;
+        private System.Windows.Forms.CheckBox goToCheck;
         private System.Windows.Forms.Label creatureRawValue;
         private System.Windows.Forms.Label creatureRawLabel;
         private System.Windows.Forms.CheckBox autoLootCheck;

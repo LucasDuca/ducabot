@@ -39,6 +39,7 @@ namespace DucaBot
         private byte _monsterFlag;
         private byte _goToOpponentFlag;
         private byte _lastMonsterFlag = 0;
+        private byte _lastGoToFlag = 0;
         private bool _pendingSpace;
         private bool _autoLootEnabled;
         private DateTime _lastMovementTime = DateTime.Now;
@@ -121,6 +122,12 @@ namespace DucaBot
                 monsterValue.Text = _monsterFlag == 0 ? "NO" : "YES";
                 creatureRawValue.Text = _monsterFlag.ToString();
                 goToValue.Text = _goToOpponentFlag.ToString();
+                if (goToCheck.Checked && _goToOpponentFlag == 0 && _lastGoToFlag == 0)
+                {
+                    Logger.LogInfo("GoToOpponent=0 e check marcado: enviando ScrollLock para ativar perseguiÇõÇœo");
+                    PressKey(VirtualKey.ScrollLock, 1, 1);
+                }
+                _lastGoToFlag = _goToOpponentFlag;
                 if (_monsterFlag != _lastMonsterFlag)
                 {
                     if (_lastMonsterFlag != 0 && _monsterFlag == 0)
@@ -318,6 +325,12 @@ namespace DucaBot
         {
             historyGrid.Rows.Clear();
             statusLabel.Text = "Grid limpa.";
+        }
+
+        private void goToCheck_CheckedChanged(object sender, EventArgs e)
+        {
+            // evita disparar imediatamente se o valor já estiver diferente
+            _lastGoToFlag = _goToOpponentFlag;
         }
 
 private void autoLootCheck_CheckedChanged(object sender, EventArgs e)
@@ -692,6 +705,7 @@ private void autoLootCheck_CheckedChanged(object sender, EventArgs e)
                     VirtualKey.Space => (ushort)ScanCode.Space,
                     VirtualKey.Numpad9 => (ushort)ScanCode.Numpad9,
                     VirtualKey.Home => (ushort)ScanCode.Home,
+                    VirtualKey.ScrollLock => (ushort)ScanCode.ScrollLock,
                     _ => 0
                 };
 
@@ -731,10 +745,11 @@ private void autoLootCheck_CheckedChanged(object sender, EventArgs e)
                     VirtualKey.Space => 0x20,
                     VirtualKey.Numpad9 => 0x69,
                     VirtualKey.Home => 0x24,
+                    VirtualKey.ScrollLock => 0x91,
                     _ => (ushort)0
                 };
 
-                if (key == VirtualKey.Numpad9 || key == VirtualKey.Home)
+                if (key == VirtualKey.Numpad9 || key == VirtualKey.Home || key == VirtualKey.ScrollLock)
                 {
                     // Numpad9 direto com keybd_event para evitar bloqueio de SendInput
                     keybd_event((byte)vk, 0, 0, UIntPtr.Zero);
@@ -790,7 +805,8 @@ namespace DucaBot
         Down = 0x28,
         Space = 0x20,
         Numpad9 = 0x69,
-        Home = 0x24
+        Home = 0x24,
+        ScrollLock = 0x91
     }
 
     internal enum ScanCode : ushort
@@ -801,6 +817,7 @@ namespace DucaBot
         Down = 0x50,
         Space = 0x39,
         Numpad9 = 0x49,
-        Home = 0x47
+        Home = 0x47,
+        ScrollLock = 0x46
     }
 }

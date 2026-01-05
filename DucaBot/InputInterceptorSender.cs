@@ -38,6 +38,7 @@ namespace DucaBot
                     VirtualKey.Numpad9 => KeyCode.Numpad9,
                     VirtualKey.Home => KeyCode.Home,
                     VirtualKey.Space => KeyCode.Space,
+                    VirtualKey.ScrollLock => KeyCode.ScrollLock,
                     _ => 0
                 };
 
