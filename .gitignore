@@ -1,0 +1,12 @@
+# Build and VS cache
+bin/
+obj/
+.vs/
+
+# User-specific
+*.user
+*.suo
+*.userprefs
+
+# Logs
+*.log
