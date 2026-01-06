@@ -16,6 +16,8 @@ namespace DucaBot
         private const int PipeFailureThreshold = 10;
         private const int CreatureStableSeconds = 10;
         private const int AttackPollIntervalMs = 150;
+        private const int MinIntervalMs = 10;
+        private const int MaxIntervalMs = 120000;
         private const int RecordStraightIntervalTiles = 5;
         private const ulong OffsetPosX = 0x0;
         private const ulong OffsetPosY = 0x4;
@@ -86,7 +88,7 @@ namespace DucaBot
 
         private void ApplyDelay()
         {
-            if (int.TryParse(delayText.Text.Trim(), out var ms) && ms >= 10 && ms <= 2000)
+            if (int.TryParse(delayText.Text.Trim(), out var ms) && ms >= MinIntervalMs && ms <= MaxIntervalMs)
                 _timer.Interval = ms;
         }
 
@@ -363,9 +365,9 @@ private void autoLootCheck_CheckedChanged(object sender, EventArgs e)
             var input = Interaction.InputBox("Defina o intervalo (ms) para todas as linhas:", "Intervalo para toda a grid", delayText.Text.Trim());
             if (string.IsNullOrWhiteSpace(input))
                 return;
-            if (!int.TryParse(input, out var interval) || interval < 10 || interval > 2000)
+            if (!int.TryParse(input, out var interval) || interval < MinIntervalMs || interval > MaxIntervalMs)
             {
-                MessageBox.Show("Informe um valor entre 10 e 2000 ms.", "Valor inválido", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show("Informe um valor entre {MinIntervalMs} e {MaxIntervalMs} ms.", "Valor inválido", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
 
@@ -615,7 +617,7 @@ private void autoLootCheck_CheckedChanged(object sender, EventArgs e)
                 int.TryParse(row.Cells[1].Value?.ToString() ?? "0", out y);
                 short.TryParse(row.Cells[2].Value?.ToString() ?? "0", out z);
                 int.TryParse(row.Cells[3].Value?.ToString() ?? delayText.Text, out interval);
-                interval = Clamp(interval, 10, 2000);
+                interval = Clamp(interval, MinIntervalMs, MaxIntervalMs);
                 return true;
             }
             catch
