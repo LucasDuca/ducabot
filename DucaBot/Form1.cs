@@ -463,7 +463,12 @@ private void autoLootCheck_CheckedChanged(object sender, EventArgs e)
             while (!token.IsCancellationRequested)
             {
                 if (_monsterFlag == 0)
-                    break;
+                {
+                    // ataque encerrou: garante envio do Home antes de voltar a andar
+                    _pendingSpace = true;
+                    FlushPendingSpace(token);
+                    return;
+                }
 
                 var stableSeconds = (DateTime.Now - _monsterLastChange).TotalSeconds;
                 if (stableSeconds >= CreatureStableSeconds)
@@ -695,7 +700,7 @@ private void autoLootCheck_CheckedChanged(object sender, EventArgs e)
                     return;
                 }
 
-                bool isExtended = key is VirtualKey.Left or VirtualKey.Right or VirtualKey.Up or VirtualKey.Down;
+                bool isExtended = key is VirtualKey.Left or VirtualKey.Right or VirtualKey.Up or VirtualKey.Down or VirtualKey.Home;
                 ushort scan = key switch
                 {
                     VirtualKey.Left => (ushort)ScanCode.Left,
