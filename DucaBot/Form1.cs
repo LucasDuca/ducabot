@@ -16,12 +16,13 @@ namespace DucaBot
         private const int PipeFailureThreshold = 10;
         private const int CreatureStableSeconds = 10;
         private const int AttackPollIntervalMs = 150;
+        private const int RecordStraightIntervalTiles = 5;
         private const ulong OffsetPosX = 0x0;
         private const ulong OffsetPosY = 0x4;
         private const ulong OffsetPosZ = 0x8;
         // GoToOpponent fica 0x4EC bytes antes da base (base - 0x4EC = 0x03CC7848 quando base = 0x03CC7D34)
         private const int OffsetGoToOpponentBack = 0x4EC;
-        private const string AttackingAddressHex = "03CCFC34";
+        private const string AttackingAddressHex = "03CC77B4"; //;"03CCFC34";
         private readonly DbkProxyClient? _client;
         private readonly System.Windows.Forms.Timer _timer;
         private readonly Dictionary<string, ulong> _addresses = new();
@@ -40,11 +41,19 @@ namespace DucaBot
         private byte _goToOpponentFlag;
         private byte _lastMonsterFlag = 0;
         private byte _lastGoToFlag = 0;
+        private readonly List<(int X, int Y)> _offRouteTrail = new();
+        private int _offRouteStartX;
+        private int _offRouteStartY;
+        private bool _offRouteTracking;
         private bool _pendingSpace;
         private bool _autoLootEnabled;
         private DateTime _lastMovementTime = DateTime.Now;
         private DateTime _monsterLastChange = DateTime.Now;
         private bool _recording;
+        private AxisType _recordLastAxis = AxisType.None;
+        private int _recordLastRecordedX;
+        private int _recordLastRecordedY;
+        private short _recordLastRecordedZ;
         private bool _autoWalking;
         private CancellationTokenSource? _autoCts;
         private string _lastErrorMsg = string.Empty;
@@ -142,7 +151,9 @@ namespace DucaBot
 
                 if (_recording && (_posX != _lastX || _posY != _lastY || _posZ != _lastZ))
                 {
-                    historyGrid.Rows.Add(_posX, _posY, _posZ, _timer.Interval);
+                    var moveDx = _posX - _lastX;
+                    var moveDy = _posY - _lastY;
+                    TrackRecording(moveDx, moveDy);
                 }
 
                 _lastX = _posX;
@@ -205,6 +216,14 @@ namespace DucaBot
             recordButton.BackColor = _recording
                 ? System.Drawing.Color.FromArgb(200, 80, 80)
                 : System.Drawing.Color.FromArgb(52, 92, 170);
+            if (_recording)
+            {
+                _recordLastAxis = AxisType.None;
+                _recordLastRecordedX = _posX;
+                _recordLastRecordedY = _posY;
+                _recordLastRecordedZ = _posZ;
+                AddRecordedWaypoint(_posX, _posY, _posZ);
+            }
         }
 
         private async void autoWalkButton_Click(object sender, EventArgs e)
@@ -458,8 +477,10 @@ private void autoLootCheck_CheckedChanged(object sender, EventArgs e)
         }
 
         private record Step(int X, int Y, short Z, int IntervalMs);
-        private void WaitWhileAttacking(CancellationToken token)
+        private void WaitWhileAttacking(CancellationToken token, int keyDelay)
         {
+            var lastRecordedX = _posX;
+            var lastRecordedY = _posY;
             while (!token.IsCancellationRequested)
             {
                 if (_monsterFlag == 0)
@@ -467,12 +488,23 @@ private void autoLootCheck_CheckedChanged(object sender, EventArgs e)
                     // ataque encerrou: garante envio do Home antes de voltar a andar
                     _pendingSpace = true;
                     FlushPendingSpace(token);
+                    if (_offRouteTracking && _offRouteTrail.Count > 0)
+                        ReturnAlongTrail(keyDelay, token);
+                    _offRouteTracking = false;
+                    _offRouteTrail.Clear();
                     return;
                 }
 
                 var stableSeconds = (DateTime.Now - _monsterLastChange).TotalSeconds;
                 if (stableSeconds >= CreatureStableSeconds)
                     break; // criatura n?o mudou por tempo limite, pode seguir caminhando
+
+                if (_offRouteTracking && (_posX != lastRecordedX || _posY != lastRecordedY))
+                {
+                    _offRouteTrail.Add((_posX, _posY));
+                    lastRecordedX = _posX;
+                    lastRecordedY = _posY;
+                }
 
                 Thread.Sleep(AttackPollIntervalMs);
             }
@@ -527,7 +559,6 @@ private void autoLootCheck_CheckedChanged(object sender, EventArgs e)
                     {
                         HighlightRow(i);
                         FlushPendingSpace(token);
-                        WaitWhileAttacking(token);
                         if (token.IsCancellationRequested)
                             break;
 
@@ -621,11 +652,16 @@ private void autoLootCheck_CheckedChanged(object sender, EventArgs e)
 
             Logger.LogInfo($"NavigateTo target=({step.X},{step.Y}) start=({cx},{cy}) dx={dx} dy={dy} movesX={movesX} movesY={movesY} keyDelay={keyDelay} interval={step.IntervalMs}");
 
+            _offRouteTracking = true;
+            _offRouteStartX = _posX;
+            _offRouteStartY = _posY;
+            _offRouteTrail.Clear();
+
             FlushPendingSpace(token);
             for (int i = 0; i < movesX && !token.IsCancellationRequested; i++)
             {
                 var dir = dx > 0 ? VirtualKey.Right : VirtualKey.Left;
-                WaitWhileAttacking(token);
+                WaitWhileAttacking(token, keyDelay);
                 if (token.IsCancellationRequested) break;
                 PressKey(dir, i + 1, movesX);
                 cx += dx > 0 ? 1 : -1;
@@ -634,7 +670,7 @@ private void autoLootCheck_CheckedChanged(object sender, EventArgs e)
             for (int i = 0; i < movesY && !token.IsCancellationRequested; i++)
             {
                 var dir = dy > 0 ? VirtualKey.Down : VirtualKey.Up;
-                WaitWhileAttacking(token);
+                WaitWhileAttacking(token, keyDelay);
                 if (token.IsCancellationRequested) break;
                 PressKey(dir, i + 1, movesY);
                 cy += dy > 0 ? 1 : -1;
@@ -642,6 +678,8 @@ private void autoLootCheck_CheckedChanged(object sender, EventArgs e)
             }
 
             FlushPendingSpace(token);
+            _offRouteTracking = false;
+            _offRouteTrail.Clear();
             Thread.Sleep(step.IntervalMs);
         }
 
@@ -650,6 +688,106 @@ private void autoLootCheck_CheckedChanged(object sender, EventArgs e)
             if (val < min) return min;
             if (val > max) return max;
             return val;
+        }
+
+        private void ReturnAlongTrail(int keyDelay, CancellationToken token)
+        {
+            // retorna pelo caminho percorrido fora da rota, do ponto atual até o início da rota
+            for (int i = _offRouteTrail.Count - 1; i >= 0 && !token.IsCancellationRequested; i--)
+            {
+                var target = _offRouteTrail[i];
+                MoveToPosition(target.X, target.Y, keyDelay, token);
+            }
+            if (!token.IsCancellationRequested)
+                MoveToPosition(_offRouteStartX, _offRouteStartY, keyDelay, token);
+        }
+
+        private void MoveToPosition(int targetX, int targetY, int keyDelay, CancellationToken token)
+        {
+            int cx = _posX;
+            int cy = _posY;
+            int dx = targetX - cx;
+            int dy = targetY - cy;
+
+            for (int i = 0; i < Math.Abs(dx) && !token.IsCancellationRequested; i++)
+            {
+                var dir = dx > 0 ? VirtualKey.Right : VirtualKey.Left;
+                PressKey(dir, i + 1, Math.Abs(dx));
+                Thread.Sleep(keyDelay);
+            }
+            for (int i = 0; i < Math.Abs(dy) && !token.IsCancellationRequested; i++)
+            {
+                var dir = dy > 0 ? VirtualKey.Down : VirtualKey.Up;
+                PressKey(dir, i + 1, Math.Abs(dy));
+                Thread.Sleep(keyDelay);
+            }
+        }
+
+        private void TrackRecording(int moveDx, int moveDy)
+        {
+            var axisNow = AxisType.None;
+            if (moveDx != 0 && moveDy == 0)
+                axisNow = AxisType.X;
+            else if (moveDy != 0 && moveDx == 0)
+                axisNow = AxisType.Y;
+            else if (moveDx != 0 && moveDy != 0)
+                axisNow = AxisType.Diagonal;
+
+            if (axisNow == AxisType.None)
+                return;
+
+            if (_recordLastAxis != AxisType.None && _recordLastAxis != axisNow && axisNow != AxisType.Diagonal)
+            {
+                // adiciona antes de virar o eixo
+                AddRecordedWaypoint(_lastX, _lastY, _lastZ);
+                _recordLastRecordedX = _lastX;
+                _recordLastRecordedY = _lastY;
+                _recordLastRecordedZ = _lastZ;
+            }
+
+            if (axisNow == AxisType.X)
+            {
+                if (Math.Abs(_posX - _recordLastRecordedX) >= RecordStraightIntervalTiles)
+                {
+                    AddRecordedWaypoint(_posX, _posY, _posZ);
+                    _recordLastRecordedX = _posX;
+                    _recordLastRecordedY = _posY;
+                    _recordLastRecordedZ = _posZ;
+                }
+            }
+            else if (axisNow == AxisType.Y)
+            {
+                if (Math.Abs(_posY - _recordLastRecordedY) >= RecordStraightIntervalTiles)
+                {
+                    AddRecordedWaypoint(_posX, _posY, _posZ);
+                    _recordLastRecordedX = _posX;
+                    _recordLastRecordedY = _posY;
+                    _recordLastRecordedZ = _posZ;
+                }
+            }
+            else if (axisNow == AxisType.Diagonal)
+            {
+                // em diagonais, registra imediatamente para nÃ£o perder a curva
+                AddRecordedWaypoint(_posX, _posY, _posZ);
+                _recordLastRecordedX = _posX;
+                _recordLastRecordedY = _posY;
+                _recordLastRecordedZ = _posZ;
+            }
+
+            _recordLastAxis = axisNow;
+        }
+
+        private void AddRecordedWaypoint(int x, int y, short z)
+        {
+            historyGrid.Rows.Add(x, y, z, _timer.Interval);
+        }
+
+        private enum AxisType
+        {
+            None,
+            X,
+            Y,
+            Diagonal
         }
 
         [StructLayout(LayoutKind.Sequential)]
