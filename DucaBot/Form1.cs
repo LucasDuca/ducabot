@@ -506,7 +506,8 @@ private void autoLootCheck_CheckedChanged(object sender, EventArgs e)
                     lastRecordedY = _posY;
                 }
 
-                Thread.Sleep(AttackPollIntervalMs);
+                if (!SleepWithCancel(AttackPollIntervalMs, token))
+                    break;
             }
             FlushPendingSpace(token);
         }
@@ -665,7 +666,7 @@ private void autoLootCheck_CheckedChanged(object sender, EventArgs e)
                 if (token.IsCancellationRequested) break;
                 PressKey(dir, i + 1, movesX);
                 cx += dx > 0 ? 1 : -1;
-                Thread.Sleep(keyDelay);
+                if (!SleepWithCancel(keyDelay, token)) break;
             }
             for (int i = 0; i < movesY && !token.IsCancellationRequested; i++)
             {
@@ -674,13 +675,13 @@ private void autoLootCheck_CheckedChanged(object sender, EventArgs e)
                 if (token.IsCancellationRequested) break;
                 PressKey(dir, i + 1, movesY);
                 cy += dy > 0 ? 1 : -1;
-                Thread.Sleep(keyDelay);
+                if (!SleepWithCancel(keyDelay, token)) break;
             }
 
             FlushPendingSpace(token);
             _offRouteTracking = false;
             _offRouteTrail.Clear();
-            Thread.Sleep(step.IntervalMs);
+            SleepWithCancel(step.IntervalMs, token);
         }
 
         private static int Clamp(int val, int min, int max)
@@ -713,13 +714,13 @@ private void autoLootCheck_CheckedChanged(object sender, EventArgs e)
             {
                 var dir = dx > 0 ? VirtualKey.Right : VirtualKey.Left;
                 PressKey(dir, i + 1, Math.Abs(dx));
-                Thread.Sleep(keyDelay);
+                if (!SleepWithCancel(keyDelay, token)) break;
             }
             for (int i = 0; i < Math.Abs(dy) && !token.IsCancellationRequested; i++)
             {
                 var dir = dy > 0 ? VirtualKey.Down : VirtualKey.Up;
                 PressKey(dir, i + 1, Math.Abs(dy));
-                Thread.Sleep(keyDelay);
+                if (!SleepWithCancel(keyDelay, token)) break;
             }
         }
 
@@ -780,6 +781,13 @@ private void autoLootCheck_CheckedChanged(object sender, EventArgs e)
         private void AddRecordedWaypoint(int x, int y, short z)
         {
             historyGrid.Rows.Add(x, y, z, _timer.Interval);
+        }
+
+        private bool SleepWithCancel(int milliseconds, CancellationToken token)
+        {
+            if (milliseconds <= 0)
+                return !token.IsCancellationRequested;
+            return !token.WaitHandle.WaitOne(milliseconds);
         }
 
         private enum AxisType
